@@ -187,10 +187,9 @@ export interface Appointment {
 
 export type NotificationType =
   | 'New Lead'
-  | 'New Conversation'
-  | 'Human Handoff'
   | 'Appointment Reminder'
   | 'Appointment Change'
+  | 'Invoice'
   | 'System Notification';
 
 export interface Notification {
@@ -215,6 +214,7 @@ export interface Doctor {
     days: string[];
     hours: string;
   };
+  maxBookingsPerSlot?: number;
   isActive: boolean;
 }
 
@@ -267,13 +267,7 @@ export interface AIReceptionistConfig {
   tone: 'professional' | 'warm' | 'concise';
   conversationInstructions: string;
   clinicInformation: string;
-  servicesTreatments: string;
-  doctorsInfo: string;
-  consultationDetails: string;
-  timings: string;
   faqs: string;
-  autoHandoffOnEmergency: boolean;
-  bookingConfidenceThreshold: number;
 }
 
 export type WhatsAppStatus = 'Connected' | 'Disconnected' | 'Pending';

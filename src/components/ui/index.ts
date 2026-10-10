@@ -18,5 +18,6 @@ export * from './Skeleton';
 export * from './EmptyState';
 export * from './ErrorState';
 export * from './PageHeader';
+export * from './ExportExcelButton';
 export * from './Timeline';
 export * from './Tabs';

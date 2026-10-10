@@ -34,6 +34,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
     initAuth();
+
+    const onExpired = () => setUser(null);
+    window.addEventListener('cgs:session_expired', onExpired);
+    return () => window.removeEventListener('cgs:session_expired', onExpired);
   }, []);
 
   const login = async (email: string, pass: string) => {

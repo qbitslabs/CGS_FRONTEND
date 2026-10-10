@@ -15,6 +15,7 @@ import {
   FileText,
   Plus,
 } from 'lucide-react';
+import { formatDate, formatDateTime } from '../../utils/format';
 import {
   PageHeader,
   Card,
@@ -328,7 +329,7 @@ export const PatientDetailPage: React.FC = () => {
                     >
                       <div>
                         <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                          {apt.date} • {apt.time}
+                          {formatDate(apt.date)} • {apt.time}
                         </div>
                         <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
                           {apt.service} • {apt.doctorName}
@@ -371,7 +372,7 @@ export const PatientDetailPage: React.FC = () => {
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <StatusBadge status={conv.state} size="sm" />
-                          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{conv.lastMessageTime}</span>
+                          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{formatDateTime(conv.lastMessageTime)}</span>
                         </div>
                         <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {conv.lastMessage}

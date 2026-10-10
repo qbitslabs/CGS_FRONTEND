@@ -17,9 +17,11 @@ import {
   RotateCcw,
   AlertCircle,
 } from 'lucide-react';
+import { formatDate } from '../../utils/format';
 import {
   PageHeader,
   Button,
+  ExportExcelButton,
   Select,
   Card,
   StatusBadge,
@@ -657,6 +659,19 @@ export const AppointmentsPage: React.FC = () => {
               </button>
             </div>
 
+            <ExportExcelButton
+              filename="appointments"
+              headers={['Patient', 'Phone', 'Doctor', 'Service', 'Date', 'Time', 'Status']}
+              rows={displayedAppointments.map((apt) => [
+                apt.patientName,
+                apt.patientPhone,
+                apt.doctorName,
+                apt.service,
+                formatDate(apt.date),
+                apt.time,
+                apt.status,
+              ])}
+            />
             <Button
               variant="primary"
               size="md"
@@ -756,11 +771,16 @@ export const AppointmentsPage: React.FC = () => {
         /* Calendar Schedule Cards View */
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           {Object.keys(groupedByDate).map((dateKey) => {
-            const dateObj = new Date(dateKey);
             const isToday = dateKey === new Date().toISOString().split('T')[0];
             const dateLabel = isToday
-              ? `Today (${dateKey})`
-              : dateObj.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
+              ? `Today (${formatDate(dateKey)})`
+              : new Intl.DateTimeFormat('en-IN', {
+                  timeZone: 'UTC',
+                  weekday: 'long',
+                  day: '2-digit',
+                  month: 'short',
+                  year: 'numeric',
+                }).format(new Date(`${dateKey}T00:00:00Z`));
 
             const dayApts = groupedByDate[dateKey];
 
@@ -905,7 +925,7 @@ export const AppointmentsPage: React.FC = () => {
                   </Td>
                   <Td>
                     <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                      {apt.date} • {apt.time}
+                      {formatDate(apt.date)} • {apt.time}
                     </div>
                   </Td>
                   <Td>
@@ -1313,7 +1333,7 @@ export const AppointmentsPage: React.FC = () => {
         treatingDoctorId={completingApt?.doctorId}
         autoSendWhatsApp
         title="Generate invoice to complete"
-        description="Create the treatment invoice first. After you submit it, the invoice is sent on WhatsApp and this appointment is marked complete."
+        description="Create the treatment invoice. Choose the treating doctor, and choose whether to send the bill on WhatsApp."
         submitLabel="Create invoice & complete"
         onCreated={handleCompleteInvoiceCreated}
       />

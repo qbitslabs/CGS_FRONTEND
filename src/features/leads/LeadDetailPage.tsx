@@ -13,6 +13,7 @@ import {
   CalendarOff,
   AlertTriangle,
 } from 'lucide-react';
+import { formatDate, formatDateTime } from '../../utils/format';
 import {
   PageHeader,
   Card,
@@ -464,7 +465,7 @@ export const LeadDetailPage: React.FC = () => {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div>
                     <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)' }}>
-                      {appointment.date} at {appointment.time}
+                      {formatDate(appointment.date)} at {appointment.time}
                     </div>
                     <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '2px' }}>
                       With {appointment.doctorName} • {appointment.service}
@@ -531,7 +532,7 @@ export const LeadDetailPage: React.FC = () => {
                             {m.senderName}
                             {m.isAiGenerated && ' (AI)'}
                           </span>
-                          <span style={{ fontSize: '10px', opacity: 0.8 }}>{m.timestamp}</span>
+                          <span style={{ fontSize: '10px', opacity: 0.8 }}>{formatDateTime(m.timestamp)}</span>
                         </div>
                         <div style={{ fontSize: '12px', lineHeight: 1.4 }}>{m.text}</div>
                       </div>

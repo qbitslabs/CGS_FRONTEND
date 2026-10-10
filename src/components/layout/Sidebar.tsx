@@ -8,6 +8,7 @@ import {
   UserCheck,
   MessageSquare,
   Calendar,
+  Send,
   CreditCard,
   Bell,
   Settings,
@@ -112,6 +113,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onClose }) => {
       permission: 'conversations.view',
     },
     { label: 'Appointments', to: '/appointments', icon: <Calendar size={18} />, permission: 'appointments.view' },
+    { label: 'Outbound', to: '/outbound', icon: <Send size={18} />, permission: 'conversations.manage' },
     { label: 'Billing', to: '/billing', icon: <CreditCard size={18} />, permission: 'billing.view' },
     {
       label: 'Notifications',

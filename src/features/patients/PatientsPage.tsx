@@ -2,6 +2,7 @@
  * Opens a patient record; data is live from CGS. */
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { formatDateTime } from '../../utils/format';
 import {
   Plus,
   Eye,
@@ -9,6 +10,7 @@ import {
 import {
   PageHeader,
   Button,
+  ExportExcelButton,
   SearchInput,
   Select,
   TableContainer,
@@ -149,14 +151,31 @@ export const PatientsPage: React.FC = () => {
         title="Patient Directory"
         description="Search, view, and maintain active patient records and clinical history."
         actions={
-          <Button
-            variant="primary"
-            size="md"
-            onClick={() => setIsModalOpen(true)}
-            leftIcon={<Plus size={16} />}
-          >
-            Register Patient
-          </Button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <ExportExcelButton
+              filename="patients"
+              headers={['Name', 'Phone', 'Email', 'Gender', 'Age', 'Last appointment', 'Next appointment', 'Status', 'Last activity']}
+              rows={patients.map((pat) => [
+                pat.name,
+                pat.phone,
+                pat.email || '',
+                pat.gender || '',
+                pat.age ?? '',
+                formatDateTime(pat.lastAppointment),
+                formatDateTime(pat.nextAppointment),
+                pat.status,
+                formatDateTime(pat.lastActivity),
+              ])}
+            />
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => setIsModalOpen(true)}
+              leftIcon={<Plus size={16} />}
+            >
+              Register Patient
+            </Button>
+          </div>
         }
       />
 
@@ -277,13 +296,13 @@ export const PatientsPage: React.FC = () => {
                   </Td>
                   <Td>
                     <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                      {pat.lastAppointment || 'None recorded'}
+                      {pat.lastAppointment ? formatDateTime(pat.lastAppointment) : 'None recorded'}
                     </span>
                   </Td>
                   <Td>
                     {pat.nextAppointment ? (
                       <Badge variant="default" size="sm">
-                        {pat.nextAppointment}
+                        {formatDateTime(pat.nextAppointment)}
                       </Badge>
                     ) : (
                       <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>None scheduled</span>
@@ -294,7 +313,7 @@ export const PatientsPage: React.FC = () => {
                   </Td>
                   <Td>
                     <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                      {pat.lastActivity}
+                      {formatDateTime(pat.lastActivity)}
                     </span>
                   </Td>
                   <Td style={{ textAlign: 'right' }}>

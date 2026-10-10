@@ -1,5 +1,5 @@
-/* Fetch wrapper for the CGS clinic API with bearer auth and JSON errors.
- * All staff screens talk to the backend through this client. */
+/* Fetch wrapper for the CGS clinic API.
+ * Access tokens live in memory. The refresh token is an httpOnly cookie. */
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/cgs_api/v1';
 
 export interface ApiResponse<T = any> {
@@ -24,6 +24,21 @@ export class ApiError extends Error {
   }
 }
 
+let accessToken: string | null = null;
+let refreshInFlight: Promise<boolean> | null = null;
+
+export function setAccessToken(token: string | null) {
+  accessToken = token;
+}
+
+export function getAccessToken() {
+  return accessToken;
+}
+
+function isAuthPath(url: string) {
+  return url.includes('/auth/login') || url.includes('/auth/refresh');
+}
+
 class ApiClient {
   private baseURL: string;
 
@@ -31,27 +46,52 @@ class ApiClient {
     this.baseURL = baseURL;
   }
 
-  private getAuthToken(): string | null {
-    return localStorage.getItem('cgs_access_token');
+  private async refreshAccessToken(): Promise<boolean> {
+    if (!refreshInFlight) {
+      refreshInFlight = (async () => {
+        const response = await fetch(`${this.baseURL}/auth/refresh`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { Accept: 'application/json' },
+        });
+        if (!response.ok) {
+          accessToken = null;
+          return false;
+        }
+        const payload = await response.json().catch(() => null);
+        const next = payload?.data?.accessToken || payload?.accessToken;
+        if (!next) {
+          accessToken = null;
+          return false;
+        }
+        accessToken = next;
+        return true;
+      })().finally(() => {
+        refreshInFlight = null;
+      });
+    }
+    return refreshInFlight;
   }
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    allowRefresh = true
   ): Promise<T> {
     const url = endpoint.startsWith('http')
       ? endpoint
       : `${this.baseURL}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
 
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
       Accept: 'application/json',
       ...((options.headers as Record<string, string>) || {}),
     };
+    if (options.body) {
+      headers['Content-Type'] = headers['Content-Type'] || 'application/json';
+    }
 
-    const token = this.getAuthToken();
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
+    if (accessToken) {
+      headers['Authorization'] = `Bearer ${accessToken}`;
     }
 
     try {
@@ -60,6 +100,7 @@ class ApiClient {
       const timer = timeoutMs ? setTimeout(() => controller.abort(), timeoutMs) : null;
       const response = await fetch(url, {
         ...options,
+        credentials: 'include',
         headers,
         signal: options.signal || controller.signal,
       });
@@ -73,8 +114,14 @@ class ApiClient {
         payload = await response.text();
       }
 
-      if (response.status === 401) {
-        if (!url.includes('/auth/login')) {
+      if (response.status === 401 && allowRefresh && !isAuthPath(url)) {
+        const errorCode = payload && typeof payload === 'object' ? (payload.code || payload.error?.code) : undefined;
+        if (errorCode !== 'INVALID_CREDENTIALS') {
+          const refreshed = await this.refreshAccessToken().catch(() => false);
+          if (refreshed) {
+            return this.request<T>(endpoint, options, false);
+          }
+          accessToken = null;
           localStorage.removeItem('cgs_access_token');
           localStorage.removeItem('cgs_current_user');
           window.dispatchEvent(new CustomEvent('cgs:session_expired'));
@@ -87,10 +134,14 @@ class ApiClient {
           (payload && typeof payload === 'object' && (payload.error?.message || payload.error || payload.message)) ||
           `Request failed with status ${response.status}`;
         const errorCode = payload && typeof payload === 'object' ? (payload.code || payload.error?.code) : undefined;
-        throw new ApiError(errorMsg, response.status, errorCode, payload);
+        throw new ApiError(
+          typeof errorMsg === 'string' ? errorMsg : 'Request failed',
+          response.status,
+          errorCode,
+          payload
+        );
       }
 
-      // If backend wrapped in { success: true, data: ... }, preserve meta if present
       if (payload && typeof payload === 'object' && 'data' in payload && 'success' in payload) {
         if ('meta' in payload || 'pagination' in payload || 'total' in payload) {
           return payload as T;
@@ -152,4 +203,3 @@ class ApiClient {
 
 export const cgs_api = new ApiClient(API_BASE_URL);
 export const api = cgs_api;
-

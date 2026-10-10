@@ -5,7 +5,7 @@ import { Button, Input, Modal, Select, useToast } from '../../components/ui';
 import { BillingService } from '../../services/billing.service';
 import { PatientService } from '../../services/patient.service';
 import { ClinicServiceApi } from '../../services/clinic.service';
-import { ClinicService, Invoice, PaymentMethod } from '../../types';
+import { ClinicService, Doctor, Invoice, PaymentMethod } from '../../types';
 
 interface LineItem {
   name: string;
@@ -50,13 +50,21 @@ export const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('UPI');
   const [notes, setNotes] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [doctorId, setDoctorId] = useState(treatingDoctorId || '');
+  const [sendOnWhatsApp, setSendOnWhatsApp] = useState(autoSendWhatsApp);
 
   useEffect(() => {
     if (!isOpen) return;
     setPatientId(presetPatientId || '');
+    setDoctorId(treatingDoctorId || '');
+    setSendOnWhatsApp(autoSendWhatsApp);
     PatientService.getPatients({ page: 1, pageSize: 100 })
       .then((res) => setPatients(res.data.map((p) => ({ id: p.id, name: p.name }))))
       .catch(() => setPatients([]));
+    ClinicServiceApi.getDoctors()
+      .then((list) => setDoctors(list.filter((doctor) => doctor.isActive !== false)))
+      .catch(() => setDoctors([]));
     ClinicServiceApi.getServices()
       .then((list) => {
         setServices(list.filter((s) => s.isActive !== false));
@@ -71,7 +79,7 @@ export const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({
           setItems([{ name: presetService, quantity: 1, unitPrice: 0 }]);
         }
       });
-  }, [isOpen, presetPatientId, presetService]);
+  }, [isOpen, presetPatientId, presetService, treatingDoctorId, autoSendWhatsApp]);
 
   const subtotal = useMemo(
     () => items.reduce((sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0), 0),
@@ -104,6 +112,10 @@ export const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({
       toast.error('Add at least one procedure');
       return;
     }
+    if (!doctorId) {
+      toast.error('Select the treating doctor');
+      return;
+    }
     setIsSaving(true);
     try {
       const created = await BillingService.createInvoice({
@@ -129,10 +141,10 @@ export const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({
         notes,
         createdDate: new Date().toISOString().split('T')[0],
         appointmentId,
-        treatingDoctorId,
+        treatingDoctorId: doctorId,
       });
       toast.success('Invoice created', 'Treatment invoice added to the ledger.');
-      if (autoSendWhatsApp) {
+      if (sendOnWhatsApp) {
         try {
           await BillingService.sendInvoiceWhatsApp(created.id);
           toast.success('Sent on WhatsApp', 'The invoice PDF was sent to the patient.');
@@ -247,6 +259,25 @@ export const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({
             ]}
           />
         </div>
+
+        <Select
+          label="Treating doctor"
+          value={doctorId}
+          onChange={(e) => setDoctorId(e.target.value)}
+          options={[
+            { value: '', label: 'Select doctor' },
+            ...doctors.map((doctor) => ({ value: doctor.id, label: doctor.name })),
+          ]}
+        />
+        <Select
+          label="Send this bill to the patient on WhatsApp?"
+          value={sendOnWhatsApp ? 'yes' : 'no'}
+          onChange={(e) => setSendOnWhatsApp(e.target.value === 'yes')}
+          options={[
+            { value: 'no', label: 'No, save the bill only' },
+            { value: 'yes', label: 'Yes, send it on WhatsApp' },
+          ]}
+        />
 
         <Input label="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Optional remarks" />
 

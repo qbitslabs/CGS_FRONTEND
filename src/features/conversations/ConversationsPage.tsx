@@ -13,6 +13,7 @@ import {
   FileText,
   ArrowLeft,
 } from 'lucide-react';
+import { formatDateTime } from '../../utils/format';
 import {
   PageHeader,
   Button,
@@ -330,7 +331,7 @@ export const ConversationsPage: React.FC = () => {
                         )}
                       </div>
                       <span style={{ fontSize: '10px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                        {conv.lastMessageTime}
+                        {formatDateTime(conv.lastMessageTime)}
                       </span>
                     </div>
 
@@ -631,7 +632,7 @@ export const ConversationsPage: React.FC = () => {
                           {m.senderName}
                         </span>
 
-                        <span style={{ fontSize: '10px', opacity: 0.8 }}>{m.timestamp}</span>
+                        <span style={{ fontSize: '10px', opacity: 0.8 }}>{formatDateTime(m.timestamp)}</span>
                       </div>
 
                       {/* Message Text Body */}

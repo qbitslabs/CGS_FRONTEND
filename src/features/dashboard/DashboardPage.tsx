@@ -11,6 +11,7 @@ import {
   Clock,
   Sparkles,
 } from 'lucide-react';
+import { formatDateTime } from '../../utils/format';
 import {
   Card,
   CardHeader,
@@ -429,7 +430,7 @@ export const DashboardPage: React.FC = () => {
                   </div>
 
                   <span style={{ fontSize: '11px', color: 'var(--text-muted)', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                    {conv.lastMessageTime}
+                    {formatDateTime(conv.lastMessageTime)}
                   </span>
                 </div>
               ))}

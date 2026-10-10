@@ -24,9 +24,11 @@ import {
   Copy,
   ExternalLink,
 } from 'lucide-react';
+import { formatDate } from '../../utils/format';
 import {
   PageHeader,
   Button,
+  ExportExcelButton,
   SearchInput,
   Select,
   StatCard,
@@ -232,6 +234,52 @@ export const BillingPage: React.FC = () => {
         }
         actions={
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {activeTab === 'patient-billing' && (
+              <ExportExcelButton
+                filename="invoices"
+                headers={['Invoice', 'Patient', 'Phone', 'Service', 'Amount', 'Status', 'Method', 'Date']}
+                rows={invoices.map((inv) => [
+                  inv.invoiceNumber,
+                  inv.patientName,
+                  inv.patientPhone,
+                  inv.service,
+                  inv.total,
+                  inv.paymentStatus,
+                  inv.paymentMethod,
+                  formatDate(inv.date),
+                ])}
+              />
+            )}
+            {activeTab === 'meta-ads' && metaAds && (
+              <ExportExcelButton
+                filename="meta-campaigns"
+                headers={['Campaign', 'Platform', 'Spend', 'Impressions', 'CTR', 'Leads', 'Cost per lead', 'Status']}
+                rows={metaAds.campaigns.map((camp) => [
+                  camp.name,
+                  camp.platform,
+                  camp.spentAmount,
+                  camp.impressions,
+                  camp.ctr,
+                  camp.leadsGenerated,
+                  camp.costPerLead,
+                  camp.status,
+                ])}
+              />
+            )}
+            {activeTab === 'cloud-billing' && cloudBilling && (
+              <ExportExcelButton
+                filename="cloud-invoices"
+                headers={['Period', 'Invoice', 'Plan', 'WhatsApp', 'Total', 'Status']}
+                rows={cloudBilling.cloudInvoices.map((cinv) => [
+                  formatDate(cinv.billingPeriod),
+                  cinv.invoiceNumber,
+                  cinv.planAmount,
+                  cinv.whatsappUsageAmount,
+                  cinv.totalAmount,
+                  cinv.status,
+                ])}
+              />
+            )}
             <Button
               variant="primary"
               size="sm"
@@ -473,7 +521,7 @@ export const BillingPage: React.FC = () => {
                       </Td>
                       <Td>
                         <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                          {inv.date}
+                          {formatDate(inv.date)}
                         </span>
                       </Td>
                       <Td style={{ textAlign: 'right' }}>
@@ -875,7 +923,7 @@ export const BillingPage: React.FC = () => {
                     ₹{cloudBilling.subscriptionCost.toLocaleString('en-IN')} <span style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-muted)' }}>/ month</span>
                   </div>
                   <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                    Next auto-renewal: <strong>{cloudBilling.nextBillingDate}</strong>
+                    Next auto-renewal: <strong>{formatDate(cloudBilling.nextBillingDate)}</strong>
                   </div>
                 </div>
 
@@ -1029,7 +1077,7 @@ export const BillingPage: React.FC = () => {
                     {cloudBilling.cloudInvoices.map((cinv) => (
                       <Tr key={cinv.id} isHoverable={false}>
                         <Td>
-                          <span style={{ fontWeight: 600 }}>{cinv.billingPeriod}</span>
+                          <span style={{ fontWeight: 600 }}>{formatDate(cinv.billingPeriod)}</span>
                         </Td>
                         <Td>
                           <span style={{ fontFamily: 'monospace', color: 'var(--c-slate-700)' }}>{cinv.invoiceNumber}</span>
@@ -1259,7 +1307,7 @@ export const BillingPage: React.FC = () => {
               <div style={{ textAlign: 'right' }}>
                 <StatusBadge status={selectedInvoice.paymentStatus} />
                 <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                  Date: <strong>{selectedInvoice.date}</strong>
+                  Date: <strong>{formatDate(selectedInvoice.date)}</strong>
                 </div>
               </div>
             </div>

@@ -21,13 +21,7 @@ const defaultAiConfig = (): AIReceptionistConfig => ({
   tone: 'professional',
   conversationInstructions: '',
   clinicInformation: '',
-  servicesTreatments: '',
-  doctorsInfo: '',
-  consultationDetails: '',
-  timings: '',
   faqs: '',
-  autoHandoffOnEmergency: true,
-  bookingConfidenceThreshold: 85,
 });
 
 function mapDoctors(clinic: any): Doctor[] {
@@ -44,6 +38,7 @@ function mapDoctors(clinic: any): Doctor[] {
       days: d.availabilityDays || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
       hours: d.availabilityHours || '09:00 AM - 07:00 PM',
     },
+    maxBookingsPerSlot: d.maxBookingsPerSlot || 1,
     status: d.isActive ? 'Available' : 'Off Duty',
     isActive: d.isActive,
   }));
@@ -59,13 +54,7 @@ function mapAiConfig(clinic: any): AIReceptionistConfig {
     tone: (ai.tone as AIReceptionistConfig['tone']) || 'professional',
     conversationInstructions: ai.conversationInstructions || '',
     clinicInformation: ai.clinicInformation || '',
-    servicesTreatments: ai.servicesTreatments || '',
-    doctorsInfo: ai.doctorsInfo || '',
-    consultationDetails: ai.consultationDetails || '',
-    timings: ai.timings || '',
     faqs: ai.faqs || '',
-    autoHandoffOnEmergency: true,
-    bookingConfidenceThreshold: 85,
   };
 }
 
@@ -164,7 +153,7 @@ export class ClinicServiceApi {
 
   static async updateDoctorSchedule(
     id: string,
-    updates: { availabilityDays?: string[]; availabilityHours?: string }
+    updates: { availabilityDays?: string[]; availabilityHours?: string; maxBookingsPerSlot?: number }
   ): Promise<any> {
     this.invalidateClinicCache();
     return cgs_api.patch(`/users/${id}`, updates);
@@ -208,24 +197,11 @@ export class ClinicServiceApi {
         greetingMessage: updates.greetingMessage,
         conversationInstructions: updates.conversationInstructions,
         clinicInformation: updates.clinicInformation,
-        servicesTreatments: updates.servicesTreatments,
-        doctorsInfo: updates.doctorsInfo,
-        consultationDetails: updates.consultationDetails,
-        timings: updates.timings,
         faqs: updates.faqs,
       },
     });
     this.invalidateClinicCache();
     return this.getAIConfig();
-  }
-
-  static async getWhatsAppConfig(): Promise<WhatsAppConfig> {
-    const clinic = await this.fetchClinicCurrent();
-    return mapWhatsApp(clinic);
-  }
-
-  static async updateWhatsAppConfig(_updates: Partial<WhatsAppConfig>): Promise<WhatsAppConfig> {
-    return this.getWhatsAppConfig();
   }
 
   static mapServicesFromProfile(clinic: any): ClinicService[] {

@@ -2,6 +2,7 @@
  * Renders timestamped events from CGS activity arrays. */
 import React from 'react';
 import { Clock, User, MessageSquare, Calendar, CheckCircle2, FileText } from 'lucide-react';
+import { formatDateTime } from '../../utils/format';
 
 export interface TimelineEvent {
   id: string;
@@ -80,7 +81,7 @@ export const Timeline: React.FC<TimelineProps> = ({ events }) => {
                 {event.title}
               </div>
               <span style={{ fontSize: '11px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                {event.timestamp}
+                {formatDateTime(event.timestamp)}
               </span>
             </div>
 

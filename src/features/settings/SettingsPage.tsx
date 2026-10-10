@@ -41,6 +41,7 @@ import {
   useToast,
 } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
+import { ChangePasswordCard } from './ChangePasswordCard';
 import { ClinicServiceApi } from '../../services/clinic.service';
 import {
   AIReceptionistConfig,
@@ -92,6 +93,7 @@ export const SettingsPage: React.FC = () => {
     { id: '1', start: '10:00 AM', end: '02:00 PM' },
     { id: '2', start: '05:00 PM', end: '08:00 PM' },
   ]);
+  const [bookingsPerSlot, setBookingsPerSlot] = useState(1);
   const [isSavingSchedule, setIsSavingSchedule] = useState(false);
 
   // Declare Leave Modal State (Doctor only)
@@ -186,6 +188,7 @@ export const SettingsPage: React.FC = () => {
     setSelectedDays(doc.availability?.days || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']);
     const hoursStr = doc.availability?.hours || '10:00 AM - 02:00 PM, 05:00 PM - 08:00 PM';
     setScheduleSlots(parseSlotsFromString(hoursStr));
+    setBookingsPerSlot(doc.maxBookingsPerSlot || 1);
     setIsScheduleModalOpen(true);
   };
 
@@ -235,6 +238,7 @@ export const SettingsPage: React.FC = () => {
       await ClinicServiceApi.updateDoctorSchedule(editingDoctor.id, {
         availabilityDays: selectedDays,
         availabilityHours,
+        maxBookingsPerSlot: bookingsPerSlot,
       });
 
       setDoctors((prev) =>
@@ -242,6 +246,7 @@ export const SettingsPage: React.FC = () => {
           d.id === editingDoctor.id
             ? {
                 ...d,
+                maxBookingsPerSlot: bookingsPerSlot,
                 availability: {
                   days: selectedDays,
                   hours: availabilityHours,
@@ -461,6 +466,8 @@ export const SettingsPage: React.FC = () => {
           <span>View only — staff can see settings but cannot edit them.</span>
         </div>
       )}
+
+      <ChangePasswordCard />
 
       {/* Settings Navigation Tabs */}
       <Tabs
@@ -1015,10 +1022,6 @@ export const SettingsPage: React.FC = () => {
               {(
                 [
                   ['clinicInformation', 'Clinic Information'],
-                  ['servicesTreatments', 'Services & Treatments'],
-                  ['doctorsInfo', 'Doctors'],
-                  ['consultationDetails', 'Consultation Details'],
-                  ['timings', 'Timings'],
                   ['faqs', 'FAQs'],
                 ] as const
               ).map(([key, label]) => (
@@ -1418,6 +1421,23 @@ export const SettingsPage: React.FC = () => {
                   )}
                 </div>
               ))}
+            </div>
+          </div>
+
+          <div>
+            <label style={{ fontSize: '13px', fontWeight: 600, color: 'var(--c-slate-800)', display: 'block', marginBottom: '8px' }}>
+              Appointments in each 30-minute slot
+            </label>
+            <input
+              type="number"
+              min={1}
+              max={20}
+              value={bookingsPerSlot}
+              onChange={(e) => setBookingsPerSlot(Math.min(20, Math.max(1, Number(e.target.value) || 1)))}
+              style={{ width: 120, padding: '8px 10px', borderRadius: 8, border: '1px solid #cbd5e1' }}
+            />
+            <div style={{ fontSize: '12px', color: 'var(--c-slate-500)', marginTop: 6 }}>
+              Example: 5 means five patients can book the same 10:00 AM slot.
             </div>
           </div>
 

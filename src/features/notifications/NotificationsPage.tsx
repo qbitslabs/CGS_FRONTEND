@@ -1,4 +1,4 @@
-/* Staff notification list: leads, handoffs, and appointment reminders.
+/* Staff notification list: enquiries, invoices, and appointment changes.
  * Marks items read and deep-links to the related clinic record. */
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -6,14 +6,14 @@ import {
   Bell,
   CheckCheck,
   Users,
-  MessageSquare,
-  AlertCircle,
   Calendar,
   Settings,
 } from 'lucide-react';
+import { formatDateTime } from '../../utils/format';
 import {
   PageHeader,
   Button,
+  ExportExcelButton,
   Tabs,
   Badge,
   EmptyState,
@@ -74,13 +74,11 @@ export const NotificationsPage: React.FC = () => {
     switch (type) {
       case 'New Lead':
         return <Users size={16} color="var(--c-primary-700)" />;
-      case 'New Conversation':
-        return <MessageSquare size={16} color="var(--status-info)" />;
-      case 'Human Handoff':
-        return <AlertCircle size={16} color="var(--status-warning)" />;
       case 'Appointment Reminder':
       case 'Appointment Change':
         return <Calendar size={16} color="var(--status-success)" />;
+      case 'Invoice':
+        return <Bell size={16} color="var(--c-primary-700)" />;
       case 'System Notification':
         return <Settings size={16} color="var(--c-slate-500)" />;
       default:
@@ -92,8 +90,8 @@ export const NotificationsPage: React.FC = () => {
   const filteredNotifications = notifications.filter((n) => {
     if (activeTab === 'unread') return !n.isRead;
     if (activeTab === 'leads') return n.type === 'New Lead';
-    if (activeTab === 'conversations') return n.type === 'New Conversation' || n.type === 'Human Handoff';
     if (activeTab === 'appointments') return n.type === 'Appointment Reminder' || n.type === 'Appointment Change';
+    if (activeTab === 'invoices') return n.type === 'Invoice';
     if (activeTab === 'system') return n.type === 'System Notification';
     return true;
   });
@@ -104,7 +102,7 @@ export const NotificationsPage: React.FC = () => {
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       <PageHeader
         title="Notification Center"
-        description="Live operational alerts for new leads, urgent human handoffs, and clinic schedule changes."
+        description="Alerts for new enquiries, invoices, and appointment changes. Chats stay on the Conversations badge."
         badge={
           unreadCount > 0 ? (
             <Badge variant="warning" size="sm">
@@ -113,15 +111,28 @@ export const NotificationsPage: React.FC = () => {
           ) : undefined
         }
         actions={
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleMarkAllAsRead}
-            disabled={unreadCount === 0}
-            leftIcon={<CheckCheck size={14} />}
-          >
-            Mark All as Read
-          </Button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <ExportExcelButton
+              filename="notifications"
+              headers={['Type', 'Title', 'Message', 'Time', 'Read']}
+              rows={notifications.map((notif) => [
+                notif.type,
+                notif.title,
+                notif.message,
+                formatDateTime(notif.timestamp),
+                notif.isRead ? 'Read' : 'Unread',
+              ])}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleMarkAllAsRead}
+              disabled={unreadCount === 0}
+              leftIcon={<CheckCheck size={14} />}
+            >
+              Mark All as Read
+            </Button>
+          </div>
         }
       />
 
@@ -130,9 +141,9 @@ export const NotificationsPage: React.FC = () => {
         tabs={[
           { key: 'all', label: 'All Notifications', badge: <span style={{ fontSize: '11px' }}>({notifications.length})</span> },
           { key: 'unread', label: 'Unread Only', badge: unreadCount > 0 ? <span style={{ fontSize: '11px', color: 'var(--status-warning)', fontWeight: 700 }}>({unreadCount})</span> : undefined },
-          { key: 'leads', label: 'Leads' },
-          { key: 'conversations', label: 'Conversations & Handoffs' },
+          { key: 'leads', label: 'Enquiries' },
           { key: 'appointments', label: 'Appointments' },
+          { key: 'invoices', label: 'Invoices' },
           { key: 'system', label: 'System' },
         ]}
         activeKey={activeTab}
@@ -222,7 +233,7 @@ export const NotificationsPage: React.FC = () => {
 
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', flexShrink: 0 }}>
                 <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                  {notif.timestamp}
+                    {formatDateTime(notif.timestamp)}
                 </span>
 
                 {!notif.isRead && (

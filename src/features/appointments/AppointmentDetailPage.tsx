@@ -13,6 +13,7 @@ import {
   AlertTriangle,
   AlertCircle,
 } from 'lucide-react';
+import { formatDate } from '../../utils/format';
 import {
   PageHeader,
   Card,
@@ -312,7 +313,7 @@ export const AppointmentDetailPage: React.FC = () => {
       <PageHeader
         breadcrumbs={[
           { label: 'Appointments', to: '/appointments' },
-          { label: `${appointment.patientName} (${appointment.date})` },
+          { label: `${appointment.patientName} (${formatDate(appointment.date)})` },
         ]}
         title={`Appointment: ${appointment.patientName}`}
         badge={<StatusBadge status={appointment.status} />}
@@ -385,7 +386,7 @@ export const AppointmentDetailPage: React.FC = () => {
                   Date & Scheduled Time
                 </span>
                 <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--c-primary-800)', marginTop: '2px' }}>
-                  {appointment.date} • {appointment.time}
+                  {formatDate(appointment.date)} • {appointment.time}
                 </div>
                 <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
                   Duration: {appointment.durationMinutes} minutes
@@ -640,7 +641,7 @@ export const AppointmentDetailPage: React.FC = () => {
         treatingDoctorId={appointment.doctorId}
         autoSendWhatsApp
         title="Generate invoice to complete"
-        description="Create the treatment invoice first. After you submit it, the invoice is sent on WhatsApp and this appointment is marked complete."
+        description="Create the treatment invoice. Choose the treating doctor, and choose whether to send the bill on WhatsApp."
         submitLabel="Create invoice & complete"
         onCreated={handleCompleteInvoiceCreated}
       />

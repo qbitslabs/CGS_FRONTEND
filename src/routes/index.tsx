@@ -16,6 +16,7 @@ import { AppointmentDetailPage } from '../features/appointments/AppointmentDetai
 import { NotificationsPage } from '../features/notifications/NotificationsPage';
 import { SettingsPage } from '../features/settings/SettingsPage';
 import { BillingPage } from '../features/billing/BillingPage';
+import { OutboundPage } from '../features/outbound/OutboundPage';
 
 export const AppRoutes: React.FC = () => {
   return (
@@ -113,11 +114,12 @@ export const AppRoutes: React.FC = () => {
             </ProtectedRoute>
           }
         />
+        <Route path="app/billing" element={<Navigate to="/billing" replace />} />
         <Route
-          path="app/billing"
+          path="outbound"
           element={
-            <ProtectedRoute requiredPermission="billing.view">
-              <BillingPage />
+            <ProtectedRoute requiredPermission="conversations.manage">
+              <OutboundPage />
             </ProtectedRoute>
           }
         />

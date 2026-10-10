@@ -1,64 +1,44 @@
 /* Clinic staff login, logout, and current-user calls to CGS auth.
- * Stores nothing beyond what AuthContext persists. */
-import { cgs_api } from '../api/client';
+ * The access token stays in memory. The refresh token is an httpOnly cookie. */
+import { cgs_api, setAccessToken } from '../api/client';
 import { Role, User } from '../types';
-
-const AUTH_STORAGE_KEY = 'cgs_current_user';
-const TOKEN_STORAGE_KEY = 'cgs_access_token';
 
 export class AuthService {
   private static currentUser: User | null = null;
 
   static async init(): Promise<User | null> {
-    const token = localStorage.getItem(TOKEN_STORAGE_KEY);
-    const saved = localStorage.getItem(AUTH_STORAGE_KEY);
-
-    if (token) {
-      try {
-        const remoteUser = await cgs_api.get<User>('/auth/me');
-        if (remoteUser && remoteUser.id) {
-          this.currentUser = {
-            ...remoteUser,
-            role: (remoteUser.role?.toLowerCase() as Role) || 'doctor',
-          };
-          localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(this.currentUser));
-          return this.currentUser;
-        }
-      } catch {
-        // Token invalid or expired
-        localStorage.removeItem(TOKEN_STORAGE_KEY);
-        localStorage.removeItem(AUTH_STORAGE_KEY);
+    localStorage.removeItem('cgs_access_token');
+    try {
+      const refreshed = await cgs_api.post<{ accessToken: string }>('/auth/refresh');
+      if (!refreshed?.accessToken) {
+        this.currentUser = null;
+        return null;
       }
-    }
-
-    if (saved) {
-      try {
-        this.currentUser = JSON.parse(saved);
-        return this.currentUser;
-      } catch {
-        localStorage.removeItem(AUTH_STORAGE_KEY);
+      setAccessToken(refreshed.accessToken);
+      const remoteUser = await cgs_api.get<User>('/auth/me');
+      if (!remoteUser?.id) {
+        this.currentUser = null;
+        return null;
       }
+      this.currentUser = {
+        ...remoteUser,
+        role: (remoteUser.role?.toLowerCase() as Role) || 'doctor',
+      };
+      return this.currentUser;
+    } catch {
+      setAccessToken(null);
+      this.currentUser = null;
+      localStorage.removeItem('cgs_current_user');
+      return null;
     }
-
-    this.currentUser = null;
-    return null;
   }
 
   static getCurrentUser(): User | null {
-    if (!this.currentUser) {
-      const saved = localStorage.getItem(AUTH_STORAGE_KEY);
-      if (saved) {
-        try {
-          this.currentUser = JSON.parse(saved);
-        } catch {
-          this.currentUser = null;
-        }
-      }
-    }
     return this.currentUser;
   }
 
   static async login(email: string, pass: string): Promise<User> {
+    setAccessToken(null);
     const res = await cgs_api.post<{ accessToken: string; user: User }>('/auth/login', {
       email: email.trim().toLowerCase(),
       password: pass,
@@ -67,12 +47,11 @@ export class AuthService {
       throw new Error('Invalid authentication response from server.');
     }
 
-    localStorage.setItem(TOKEN_STORAGE_KEY, res.accessToken);
+    setAccessToken(res.accessToken);
     this.currentUser = {
       ...res.user,
       role: (res.user.role?.toLowerCase() as Role) || 'doctor',
     };
-    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(this.currentUser));
     return this.currentUser;
   }
 
@@ -80,11 +59,20 @@ export class AuthService {
     try {
       await cgs_api.post('/auth/logout');
     } catch {
-      // ignore network errors on logout
+      // The cookie is cleared server-side when the call succeeds.
     } finally {
       this.currentUser = null;
-      localStorage.removeItem(TOKEN_STORAGE_KEY);
-      localStorage.removeItem(AUTH_STORAGE_KEY);
+      setAccessToken(null);
+      localStorage.removeItem('cgs_access_token');
+      localStorage.removeItem('cgs_current_user');
     }
+  }
+
+  static async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    await cgs_api.post('/auth/change-password', { currentPassword, newPassword });
+    this.currentUser = null;
+    setAccessToken(null);
+    localStorage.removeItem('cgs_access_token');
+    localStorage.removeItem('cgs_current_user');
   }
 }

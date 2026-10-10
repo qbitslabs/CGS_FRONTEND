@@ -2,6 +2,7 @@
  * New leads assign to the signed-in staff member, not a hardcoded name. */
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { formatDateTime } from '../../utils/format';
 import {
   Plus,
   Eye,
@@ -15,6 +16,7 @@ import {
 import {
   PageHeader,
   Button,
+  ExportExcelButton,
   SearchInput,
   Select,
   TableContainer,
@@ -235,14 +237,31 @@ export const LeadsPage: React.FC = () => {
         title="Lead Management"
         description="Track, qualify, and convert incoming patient inquiries into clinic appointments."
         actions={
-          <Button
-            variant="primary"
-            size="md"
-            onClick={() => openCreateLeadModal()}
-            leftIcon={<Plus size={16} />}
-          >
-            Add New Lead
-          </Button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <ExportExcelButton
+              filename="leads"
+              headers={['Name', 'Phone', 'Email', 'Source', 'Service', 'Status', 'Score', 'Assigned to', 'Last activity']}
+              rows={leads.map((lead) => [
+                lead.name,
+                lead.phone,
+                lead.email || '',
+                lead.source,
+                lead.interestedService,
+                lead.status,
+                lead.score,
+                lead.assignedTo,
+                formatDateTime(lead.lastActivity),
+              ])}
+            />
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => openCreateLeadModal()}
+              leftIcon={<Plus size={16} />}
+            >
+              Add New Lead
+            </Button>
+          </div>
         }
       />
 
@@ -458,7 +477,7 @@ export const LeadsPage: React.FC = () => {
                   </Td>
                   <Td>
                     <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                      {lead.lastActivity}
+                      {formatDateTime(lead.lastActivity)}
                     </span>
                   </Td>
                   <Td style={{ textAlign: 'right' }}>
