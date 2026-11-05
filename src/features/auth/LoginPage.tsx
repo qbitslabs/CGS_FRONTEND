@@ -2,7 +2,7 @@
  * No demo accounts or hardcoded doctor names on this screen. */
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Activity, Lock, Mail, Shield, User, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Activity, Lock, Mail, Shield, User, ArrowRight } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Button, Input, Card } from '../../components/ui';
 
