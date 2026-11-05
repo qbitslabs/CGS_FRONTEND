@@ -373,7 +373,7 @@ export function generateCloudReceiptHTML(cloudInvoice: CloudInvoice): string {
     </div>
 
     <div style="background: #f8fafc; padding: 14px; border-radius: 6px; margin-bottom: 16px; font-size: 13px;">
-      <div><strong>Billed To:</strong> Clinic subscription account</div>
+      <div><strong>Billed To:</strong> Clinic package account</div>
       <div><strong>Billing Period:</strong> ${cloudInvoice.billingPeriod}</div>
       <div><strong>Payment Date:</strong> ${cloudInvoice.date}</div>
     </div>
@@ -387,7 +387,7 @@ export function generateCloudReceiptHTML(cloudInvoice: CloudInvoice): string {
       </thead>
       <tbody>
         <tr>
-          <td><strong>Clinic Growth Enterprise SaaS Subscription (Unlimited Doctors & AI Concierge)</strong></td>
+          <td><strong>Clinic package</strong></td>
           <td style="text-align: right;">₹${cloudInvoice.planAmount.toLocaleString('en-IN')}</td>
         </tr>
         <tr>
@@ -406,7 +406,7 @@ export function generateCloudReceiptHTML(cloudInvoice: CloudInvoice): string {
     </table>
 
     <div style="font-size: 11px; color: #64748b; margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 12px; text-align: center;">
-      Thank you for subscribing to Clinic Growth System. For billing queries, contact billing@clinicgrowth.com.
+      Thank you. This receipt is for the clinic package. For billing queries, contact billing@clinicgrowth.com.
     </div>
   </div>
 </body>

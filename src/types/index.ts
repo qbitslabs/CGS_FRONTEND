@@ -15,6 +15,7 @@ export interface User {
   doctorId?: string;
   isPrimaryDoctor?: boolean;
   seesAllClinicData?: boolean;
+  outboundAllowed?: boolean;
 }
 
 export type Permission =

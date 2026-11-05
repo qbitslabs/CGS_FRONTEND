@@ -128,7 +128,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen = true, onClose }) => {
   // Filter items based on user permissions.
   // Doctor has 'billing.view' -> Billing shows.
   // Employee does NOT have 'billing.view' -> Billing is strictly hidden.
-  const navItems = allNavItems.filter((item) => !item.permission || can(item.permission));
+  const navItems = allNavItems.filter((item) => {
+    if (item.to === '/outbound' && user?.outboundAllowed === false) return false;
+    return !item.permission || can(item.permission);
+  });
 
   return (
     <aside

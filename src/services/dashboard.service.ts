@@ -31,6 +31,18 @@ export interface DashboardSummary {
   todayAppointments: Appointment[];
   recentConversations: Conversation[];
   activities: DashboardActivity[];
+  plan?: {
+    name: string | null;
+    monthlyPrice: number | null;
+    status: string | null;
+    earlyBird: boolean;
+    enforced: boolean;
+    doctors: { used: number; allowed: number | null; note: string };
+    staff: { used: number; allowed: number | null; note: string };
+    whatsappNumbers: { used: number; allowed: number | null; note: string };
+    aiReplies: { used: number; allowed: number | null; note: string };
+    whatsappMessages?: { used: number; fromDay: number; toDay: number; monthLabel: string };
+  } | null;
 }
 
 export class DashboardService {
@@ -66,6 +78,7 @@ export class DashboardService {
         participantPhone: conv.participantPhone || '',
       })),
       activities: data?.activities || [],
+      plan: data?.plan || null,
     };
   }
 }

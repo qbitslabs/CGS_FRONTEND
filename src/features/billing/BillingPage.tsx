@@ -55,6 +55,7 @@ import {
   useToast,
 } from '../../components/ui';
 import { BillingService } from '../../services/billing.service';
+import { DashboardService, DashboardSummary } from '../../services/dashboard.service';
 import { ClinicServiceApi } from '../../services/clinic.service';
 import {
   BillingSummary,
@@ -79,6 +80,7 @@ export const BillingPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [summary, setSummary] = useState<BillingSummary | null>(null);
   const [cloudBilling, setCloudBilling] = useState<CloudApiBillingSummary | null>(null);
+  const [packagePlan, setPackagePlan] = useState<DashboardSummary['plan']>(null);
   const [metaAds, setMetaAds] = useState<MetaAdsSummary | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [totalItems, setTotalItems] = useState(0);
@@ -153,6 +155,21 @@ export const BillingPage: React.FC = () => {
   }, [activeTab, canSeeCloud, canSeeMeta]);
 
   useEffect(() => {
+    if (activeTab !== 'cloud-billing' || !canSeeCloud) return;
+    let cancelled = false;
+    DashboardService.getSummary()
+      .then((data) => {
+        if (!cancelled) setPackagePlan(data.plan || null);
+      })
+      .catch(() => {
+        if (!cancelled) setPackagePlan(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, canSeeCloud]);
+
+  useEffect(() => {
     if (seesAll) {
       ClinicServiceApi.getDoctors()
         .then((list) => setDoctors(list.map((d) => ({ id: d.id, name: d.name }))))
@@ -216,7 +233,7 @@ export const BillingPage: React.FC = () => {
       ? [
           {
             key: 'cloud-billing',
-            label: 'CRM & Cloud API Subscription',
+            label: 'Package',
             icon: <Cloud size={16} />,
           },
         ]
@@ -229,7 +246,7 @@ export const BillingPage: React.FC = () => {
         title="Clinic Billing & Financial Ledger"
         description={
           canSeeCloud || canSeeMeta
-            ? 'Manage patient treatment invoices, track Meta ad spend, and view CRM subscription costs.'
+            ? 'Manage patient treatment invoices, track Meta ad spend, and view the clinic package.'
             : 'Manage patient treatment invoices for the clinic.'
         }
         actions={
@@ -889,13 +906,59 @@ export const BillingPage: React.FC = () => {
          ======================================================== */}
       {activeTab === 'cloud-billing' && cloudBilling && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {packagePlan && (
+            <Card padding="md">
+              <CardHeader>
+                <div>
+                  <CardTitle>{packagePlan.name || 'No plan assigned'}</CardTitle>
+                  <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                    {packagePlan.monthlyPrice != null
+                      ? `₹${packagePlan.monthlyPrice.toLocaleString('en-IN')} / month${packagePlan.earlyBird ? ' · Early Bird' : ''}`
+                      : 'Package price appears after a plan is assigned.'}
+                    {packagePlan.status ? ` · ${packagePlan.status.replace('_', ' ')}` : ''}
+                  </p>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, fontSize: 13 }}>
+                  {(
+                    [
+                      ['Doctors', packagePlan.doctors],
+                      ['Staff', packagePlan.staff],
+                      ['WhatsApp numbers', packagePlan.whatsappNumbers],
+                      ['AI conversations', packagePlan.aiReplies],
+                    ] as const
+                  ).map(([label, item]) => (
+                    <div key={label}>
+                      <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>{label}</div>
+                      <div style={{ fontWeight: 600 }}>
+                        {item.allowed == null ? `${item.used} in use` : `${item.used} of ${item.allowed}`}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {!packagePlan.enforced && (
+                  <p style={{ margin: '12px 0 0', fontSize: 13, color: 'var(--text-muted)' }}>
+                    Limits start when this clinic is placed on Essential, Growth, or Scale.
+                  </p>
+                )}
+                {[packagePlan.doctors.note, packagePlan.staff.note, packagePlan.whatsappNumbers.note, packagePlan.aiReplies.note]
+                  .filter(Boolean)
+                  .map((note) => (
+                    <p key={note} style={{ margin: '8px 0 0', fontSize: 13, color: 'var(--status-warning, #b45309)' }}>
+                      {note}
+                    </p>
+                  ))}
+              </CardContent>
+            </Card>
+          )}
           {/* Subscription Tier Overview Card */}
           <Card padding="lg">
             <CardHeader>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Sparkles size={18} color="var(--c-primary-700)" />
-                  <CardTitle>CGS CRM Active Subscription</CardTitle>
+                  <CardTitle>Active package</CardTitle>
                 </div>
                 <CardDescription>Clinic SaaS software plan, multi-doctor capacity, and live billing status.</CardDescription>
               </div>
@@ -951,83 +1014,55 @@ export const BillingPage: React.FC = () => {
                   <CardTitle>Meta WhatsApp Cloud API Usage</CardTitle>
                 </div>
                 <Badge variant="neutral" size="sm">
-                  Live Billing Cycle
+                  This month
                 </Badge>
               </CardHeader>
               <CardContent>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  <div>
-                    {(() => {
-                      const waConsumed = cloudBilling.whatsappApiUsage.conversationsUsed || 0;
-                      const waLimit = cloudBilling.whatsappApiUsage.freeTierLimit || 1000;
-                      const waPct = Math.min(100, Math.round((waConsumed / Math.max(1, waLimit)) * 100));
-                      return (
-                        <>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                            <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Service Conversations (Tier 1)</span>
-                            <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                              {waConsumed} / {waLimit} ({waPct}%)
-                            </span>
-                          </div>
-                          <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--c-slate-200)', borderRadius: 'var(--radius-full)', overflow: 'hidden' }}>
-                            <div
-                              style={{
-                                width: `${Math.max(4, waPct)}%`,
-                                height: '100%',
-                                backgroundColor: '#25D366',
-                                transition: 'width 0.3s ease',
-                              }}
-                            />
-                          </div>
-                        </>
-                      );
-                    })()}
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
+                    <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Messages sent</span>
+                    <span style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)' }}>
+                      {packagePlan?.whatsappMessages?.used ?? 0}
+                    </span>
                   </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '12px', backgroundColor: 'var(--c-slate-50)', padding: '10px', borderRadius: 'var(--radius-md)' }}>
-                    <div>
-                      <span style={{ color: 'var(--text-muted)' }}>Messages Sent:</span>
-                      <div style={{ fontWeight: 600, fontSize: '13px' }}>{cloudBilling.whatsappApiUsage.messagesSent}</div>
-                    </div>
-                    <div>
-                      <span style={{ color: 'var(--text-muted)' }}>Extra Conv. Cost:</span>
-                      <div style={{ fontWeight: 700, fontSize: '13px', color: 'var(--c-primary-800)' }}>₹{cloudBilling.whatsappApiUsage.totalCost}</div>
-                    </div>
-                  </div>
+                  <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>
+                    {packagePlan?.whatsappMessages
+                      ? `${packagePlan.whatsappMessages.fromDay}–${packagePlan.whatsappMessages.toDay} ${packagePlan.whatsappMessages.monthLabel}`
+                      : 'This calendar month'}
+                  </p>
                 </div>
               </CardContent>
             </Card>
 
-            {/* AI Receptionist LLM Token Consumption */}
             <Card padding="md">
               <CardHeader>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Bot size={18} color="var(--status-ai)" />
-                  <CardTitle>AI Receptionist LLM Consumption</CardTitle>
+                  <CardTitle>AI conversations</CardTitle>
                 </div>
                 <Badge variant="ai" size="sm">
-                  Active Concierge
+                  This period
                 </Badge>
               </CardHeader>
               <CardContent>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                   <div>
                     {(() => {
-                      const aiConsumed = cloudBilling.aiTokenUsage.tokensConsumed || 0;
-                      const aiLimit = cloudBilling.aiTokenUsage.includedTokens || 1000000;
-                      const aiPct = Math.min(100, Math.round((aiConsumed / Math.max(1, aiLimit)) * 100));
+                      const used = packagePlan?.aiReplies.used || 0;
+                      const allowed = packagePlan?.aiReplies.allowed;
+                      const aiPct = allowed ? Math.min(100, Math.round((used / Math.max(1, allowed)) * 100)) : 0;
                       return (
                         <>
                           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                            <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Tokens Consumed</span>
+                            <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Conversations used</span>
                             <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                              {(aiConsumed / 1000).toFixed(0)}k / {(aiLimit / 1000).toFixed(0)}k ({aiPct}%)
+                              {allowed == null ? `${used}` : `${used} of ${allowed} (${aiPct}%)`}
                             </span>
                           </div>
                           <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--c-slate-200)', borderRadius: 'var(--radius-full)', overflow: 'hidden' }}>
                             <div
                               style={{
-                                width: `${Math.max(4, aiPct)}%`,
+                                width: `${aiPct}%`,
                                 height: '100%',
                                 backgroundColor: 'var(--status-ai)',
                                 transition: 'width 0.3s ease',
@@ -1037,17 +1072,6 @@ export const BillingPage: React.FC = () => {
                         </>
                       );
                     })()}
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '12px', backgroundColor: 'var(--c-slate-50)', padding: '10px', borderRadius: 'var(--radius-md)' }}>
-                    <div>
-                      <span style={{ color: 'var(--text-muted)' }}>Auto Inquiries Handled:</span>
-                      <div style={{ fontWeight: 600, fontSize: '13px' }}>{cloudBilling.aiTokenUsage.conversationsHandled} chats</div>
-                    </div>
-                    <div>
-                      <span style={{ color: 'var(--text-muted)' }}>Overage Token Charge:</span>
-                      <div style={{ fontWeight: 700, fontSize: '13px', color: 'var(--status-success)' }}>₹0.00 (Within Cap)</div>
-                    </div>
                   </div>
                 </div>
               </CardContent>

@@ -39,9 +39,9 @@ export class BillingService {
       return cloud;
     }
     return {
-      subscriptionPlan: 'Professional Plan (₹25,000/mo)',
-      planBillingCycle: 'Monthly (1st to end of month)',
-      subscriptionCost: 25000,
+      subscriptionPlan: 'Unassigned',
+      planBillingCycle: 'Monthly',
+      subscriptionCost: 0,
       nextBillingDate: '2026-09-01',
       paymentStatus: 'Active',
       whatsappApiUsage: {

@@ -200,25 +200,7 @@ export const LoginPage: React.FC = () => {
           </div>
         </Card>
 
-        {/* Credentials hints */}
-        <div
-          style={{
-            marginTop: '16px',
-            padding: '12px 16px',
-            backgroundColor: '#ffffff',
-            borderRadius: 'var(--radius-md)',
-            border: '1px solid var(--border-light)',
-            fontSize: '12px',
-            color: 'var(--c-slate-600)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600, color: 'var(--c-slate-800)', marginBottom: '4px' }}>
-            <CheckCircle2 size={14} color="var(--status-success)" />
-            Clinic Default Credentials
-          </div>
-          <div>• <strong>Doctor:</strong> doctor@clinicgrowth.com / Doctor123!</div>
-          <div>• <strong>Employee:</strong> employee@clinicgrowth.com / Employee123!</div>
-        </div>
+        
       </div>
     </div>
   );

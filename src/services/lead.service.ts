@@ -89,7 +89,7 @@ export class LeadService {
       name: data.name,
       phone: data.phone,
       email: data.email || undefined,
-      source: data.source.toUpperCase().replace(/\s+/g, '_'),
+      source: data.source.toUpperCase().replace(/[\s-]+/g, '_'),
       interestedService: data.interestedService,
       intent: data.intent.toUpperCase(),
       notes: data.notes,

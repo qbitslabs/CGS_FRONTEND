@@ -41,9 +41,12 @@ export const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({
   onCreated,
 }) => {
   const toast = useToast();
-  const [patients, setPatients] = useState<Array<{ id: string; name: string }>>([]);
   const [services, setServices] = useState<ClinicService[]>([]);
   const [patientId, setPatientId] = useState(presetPatientId || '');
+  const [selectedPatient, setSelectedPatient] = useState<{ id: string; name: string; phone: string } | null>(null);
+  const [patientQuery, setPatientQuery] = useState('');
+  const [patientHits, setPatientHits] = useState<Array<{ id: string; name: string; phone: string }>>([]);
+  const [patientSearchState, setPatientSearchState] = useState<'idle' | 'loading' | 'error' | 'empty' | 'ready'>('idle');
   const [items, setItems] = useState<LineItem[]>([{ name: '', quantity: 1, unitPrice: 0 }]);
   const [discount, setDiscount] = useState('0');
   const [taxPercent, setTaxPercent] = useState('18');
@@ -56,17 +59,38 @@ export const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({
 
   useEffect(() => {
     if (!isOpen) return;
+    let cancelled = false;
     setPatientId(presetPatientId || '');
+    setSelectedPatient(null);
+    setPatientQuery('');
+    setPatientHits([]);
+    setPatientSearchState('idle');
     setDoctorId(treatingDoctorId || '');
     setSendOnWhatsApp(autoSendWhatsApp);
-    PatientService.getPatients({ page: 1, pageSize: 100 })
-      .then((res) => setPatients(res.data.map((p) => ({ id: p.id, name: p.name }))))
-      .catch(() => setPatients([]));
+    if (presetPatientId) {
+      PatientService.getPatientById(presetPatientId)
+        .then((patient) => {
+          if (cancelled) return;
+          setSelectedPatient({ id: patient.id, name: patient.name, phone: patient.phone || '' });
+          setPatientId(patient.id);
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setSelectedPatient(null);
+          setPatientId('');
+          setPatientSearchState('error');
+        });
+    }
     ClinicServiceApi.getDoctors()
-      .then((list) => setDoctors(list.filter((doctor) => doctor.isActive !== false)))
-      .catch(() => setDoctors([]));
+      .then((list) => {
+        if (!cancelled) setDoctors(list.filter((doctor) => doctor.isActive !== false));
+      })
+      .catch(() => {
+        if (!cancelled) setDoctors([]);
+      });
     ClinicServiceApi.getServices()
       .then((list) => {
+        if (cancelled) return;
         setServices(list.filter((s) => s.isActive !== false));
         if (presetService) {
           const match = list.find((s) => s.name.toLowerCase() === presetService.toLowerCase());
@@ -74,12 +98,50 @@ export const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({
         }
       })
       .catch(() => {
+        if (cancelled) return;
         setServices([]);
         if (presetService) {
           setItems([{ name: presetService, quantity: 1, unitPrice: 0 }]);
         }
       });
+    return () => {
+      cancelled = true;
+    };
   }, [isOpen, presetPatientId, presetService, treatingDoctorId, autoSendWhatsApp]);
+
+  useEffect(() => {
+    if (!isOpen || presetPatientId) return;
+    const term = patientQuery.trim();
+    if (term.length < 2) {
+      setPatientHits([]);
+      setPatientSearchState('idle');
+      return;
+    }
+    let cancelled = false;
+    setPatientSearchState('loading');
+    const timer = window.setTimeout(() => {
+      PatientService.getPatients({ search: term, page: 1, pageSize: 20 })
+        .then((res) => {
+          if (cancelled) return;
+          const hits = res.data.map((patient) => ({
+            id: patient.id,
+            name: patient.name,
+            phone: patient.phone || '',
+          }));
+          setPatientHits(hits);
+          setPatientSearchState(hits.length ? 'ready' : 'empty');
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setPatientHits([]);
+          setPatientSearchState('error');
+        });
+    }, 300);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [isOpen, patientQuery, presetPatientId]);
 
   const subtotal = useMemo(
     () => items.reduce((sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0), 0),
@@ -104,7 +166,7 @@ export const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({
 
   const handleSubmit = async () => {
     const validItems = items.filter((item) => item.name.trim() && item.quantity > 0);
-    if (!patientId) {
+    if (!patientId || !selectedPatient || selectedPatient.id !== patientId) {
       toast.error('Select a patient');
       return;
     }
@@ -120,8 +182,8 @@ export const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({
     try {
       const created = await BillingService.createInvoice({
         patientId,
-        patientName: patients.find((p) => p.id === patientId)?.name || '',
-        patientPhone: '',
+        patientName: selectedPatient.name,
+        patientPhone: selectedPatient.phone,
         service: validItems[0].name,
         services: validItems.map((item) => ({
           name: item.name,
@@ -182,16 +244,89 @@ export const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({
       }
     >
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        <Select
-          label="Patient"
-          value={patientId}
-          onChange={(e) => setPatientId(e.target.value)}
-          options={[
-            { value: '', label: 'Select patient' },
-            ...patients.map((p) => ({ value: p.id, label: p.name })),
-          ]}
-          disabled={Boolean(presetPatientId)}
-        />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          {presetPatientId ? (
+            <Input
+              label="Patient"
+              value={
+                selectedPatient
+                  ? `${selectedPatient.name}${selectedPatient.phone ? ` · ${selectedPatient.phone}` : ''}`
+                  : patientSearchState === 'error'
+                    ? ''
+                    : 'Loading patient...'
+              }
+              disabled
+              error={patientSearchState === 'error' ? 'This patient is not in your clinic.' : undefined}
+            />
+          ) : (
+            <>
+              <Input
+                label="Patient"
+                placeholder="Search by name or phone"
+                value={patientQuery}
+                onChange={(e) => setPatientQuery(e.target.value)}
+              />
+              {selectedPatient && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
+                  <span>
+                    {selectedPatient.name}
+                    {selectedPatient.phone ? ` · ${selectedPatient.phone}` : ''}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedPatient(null);
+                      setPatientId('');
+                    }}
+                    style={{ border: 'none', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer' }}
+                  >
+                    Clear
+                  </button>
+                </div>
+              )}
+              {patientSearchState === 'loading' && (
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Searching patients...</div>
+              )}
+              {patientSearchState === 'error' && (
+                <div style={{ fontSize: '12px', color: 'var(--status-error)' }}>Could not load patients. Try the search again.</div>
+              )}
+              {patientSearchState === 'empty' && (
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>No patient found. Add the patient first, then create the bill.</div>
+              )}
+              {patientSearchState === 'ready' && (
+                <div style={{ border: '1px solid var(--border-light)', borderRadius: '8px', overflow: 'hidden' }}>
+                  {patientHits.map((patient) => (
+                    <button
+                      key={patient.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedPatient(patient);
+                        setPatientId(patient.id);
+                        setPatientQuery('');
+                        setPatientHits([]);
+                        setPatientSearchState('idle');
+                      }}
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        textAlign: 'left',
+                        padding: '8px 12px',
+                        border: 'none',
+                        borderBottom: '1px solid var(--border-subtle)',
+                        background: patient.id === patientId ? 'var(--c-slate-100)' : '#fff',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                      }}
+                    >
+                      {patient.name}
+                      {patient.phone ? ` · ${patient.phone}` : ''}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
 
         {items.map((item, index) => (
           <div key={index} style={{ display: 'grid', gridTemplateColumns: '2fr 80px 110px', gap: '8px' }}>

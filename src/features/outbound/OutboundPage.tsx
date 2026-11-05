@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { MessageCircle, Send } from 'lucide-react';
 import { PageHeader, Button, Badge, Card, SearchInput, EmptyState, Avatar, useToast } from '../../components/ui';
+import { useAuth } from '../../context/AuthContext';
 import { AppointmentService } from '../../services/appointment.service';
 import { PatientService } from '../../services/patient.service';
 import { LeadService } from '../../services/lead.service';
@@ -12,6 +13,8 @@ import { formatDate } from '../../utils/format';
 
 export const OutboundPage: React.FC = () => {
   const toast = useToast();
+  const { user } = useAuth();
+  const campaignAllowed = user?.outboundAllowed !== false;
   const [templates, setTemplates] = useState<OutboundTemplate[]>([]);
   const [templateKey, setTemplateKey] = useState('');
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -26,6 +29,7 @@ export const OutboundPage: React.FC = () => {
   const template = templates.find((item) => item.key === templateKey);
 
   useEffect(() => {
+    if (!campaignAllowed) return;
     OutboundService.listTemplates()
       .then((rows) => {
         setTemplates(rows);
@@ -33,13 +37,13 @@ export const OutboundPage: React.FC = () => {
       })
       .catch((err: Error) => toast.error(err.message || 'Could not load templates'));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [campaignAllowed]);
 
   useEffect(() => {
     setSelected([]);
     setPreview([]);
     setQuery('');
-    if (!template) return;
+    if (!campaignAllowed || !template) return;
     if (template.recipientKind === 'appointment') {
       AppointmentService.getAppointments()
         .then(setAppointments)
@@ -57,7 +61,7 @@ export const OutboundPage: React.FC = () => {
         .then((result) => setPatients(result.data))
         .catch((err: Error) => toast.error(err.message || 'Could not load patients'));
     }
-  }, [template?.key]);
+  }, [campaignAllowed, template?.key]);
 
   const rows = useMemo(() => {
     if (!template) return [];
@@ -143,6 +147,24 @@ export const OutboundPage: React.FC = () => {
 
   const visibleIds = rows.map((row) => row.id);
   const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selected.includes(id));
+
+  if (!campaignAllowed) {
+    return (
+      <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <PageHeader
+          title="WhatsApp outbound"
+          description="Campaign sends are included on Scale."
+        />
+        <Card>
+          <EmptyState
+            icon={<Send size={28} color="var(--c-slate-400)" />}
+            title="Included on Scale"
+            description="Outbound campaigns are included on Scale. Invoices, new enquiries, and appointment reminders still send on this plan."
+          />
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
